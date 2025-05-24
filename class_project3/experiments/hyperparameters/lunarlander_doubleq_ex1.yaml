@@ -1,0 +1,8 @@
+base_config: dqn_basic
+env_name: LunarLander-v3
+
+target_update_period: 1000
+use_double_q: true
+
+hidden_size: 32
+exp_name: lunarlander_doubleq_ex1
