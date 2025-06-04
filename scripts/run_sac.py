@@ -44,8 +44,8 @@ def run_training_loop(args: argparse.Namespace):
     agent = SoftActorCritic(
         ob_shape,
         ac_dim,
-        n_layers=3,
-        hidden_size=512,
+        n_layers=args.n_layers,
+        hidden_size=args.hidden_size,
         discount=0.99,
         soft_target_update_rate=0.005,
     )
@@ -139,6 +139,8 @@ def main():
     parser.add_argument("--env_name", type=str, required=True)
     parser.add_argument("--exp_name", type=str, default="test")
     parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--n_layers", type=int, default=2)
+    parser.add_argument("--hidden_size", type=int, default=256)
     parser.add_argument("--total_steps", type=int, default=1000000)
     parser.add_argument("--random_steps", type=int, default=10000)
 
