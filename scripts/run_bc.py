@@ -20,7 +20,7 @@ from infrastructure import pytorch_util as ptu
 from infrastructure import utils
 from infrastructure.logger import Logger
 from infrastructure.replay_buffer import ReplayBuffer
-from policies.BCPolicy import MLPPolicyBC
+from networks.bc_policy import MLPPolicyBC
 
 
 # how many rollouts to save as videos to tensorboard
