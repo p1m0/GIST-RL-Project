@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import numpy as np
 import copy
-from policies.base_policy import BasePolicy
+from networks.base_policy import BasePolicy
 import gymnasium as gym
 import cv2
 from infrastructure import pytorch_util as ptu
@@ -30,7 +30,7 @@ def sample_trajectory(
             )
 
         ac: np.ndarray = policy.get_action(ob)
-        next_ob, rew, done, _, _ = env.step(ac)
+        next_ob, rew, done, _, info = env.step(ac)
         
         steps += 1
         rollout_done = done or steps >= max_length
@@ -48,6 +48,12 @@ def sample_trajectory(
         if rollout_done:
             break
 
+    episode_statistics = {"l": steps, "r": np.sum(rewards)}
+    if "episode" in info:
+        episode_statistics.update(info["episode"])
+
+    env.close()
+
     return {
         "observation": np.array(obs, dtype=np.float32),
         "image_obs": np.array(image_obs, dtype=np.uint8),
@@ -55,6 +61,7 @@ def sample_trajectory(
         "action": np.array(acs, dtype=np.float32),
         "next_observation": np.array(next_obs, dtype=np.float32),
         "terminal": np.array(terminals, dtype=np.float32),
+        "episode_statistics": episode_statistics,
     }
 
 

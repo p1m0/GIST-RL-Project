@@ -10,7 +10,7 @@ import torch
 from torch import distributions
 
 from infrastructure import pytorch_util as ptu
-from agents.base_policy import BasePolicy
+from networks.base_policy import BasePolicy
 
 class MLPPolicyBC(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     """
