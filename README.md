@@ -5,7 +5,7 @@ We support three MuJoCo environments (but there is no reason other's shouldn't w
 * HalfCheetah-v5
 * Ant-v5
 
-*IMPORTANT!*
+*IMPORTANT!* <br>
 Run all scripts from the root directory using "PYTHONPATH=$PYTHONPATH:$(pwd) python scripts/run_XXX.py"
 Install required packages from requirements.txt using "pip install -m requirements.txt"
 
