@@ -112,7 +112,7 @@ def run_training_loop(args):
                 env, agent.actor, MAX_NVIDEO, max_ep_len, render=True
             )
 
-            logger.log_trajs_as_videos(
+            logger.log_paths_as_videos(
                 eval_video_trajs,
                 itr,
                 fps=fps,

@@ -26,8 +26,8 @@ class SoftActorCritic(nn.Module):
         # Settings for multiple critics
         num_critic_networks: int = 2,
         # Soft actor-critic
-        use_entropy_bonus: bool = False,
-        temperature: float = 0.0,
+        use_entropy_bonus: bool = True,
+        temperature: float = 0.05,
         backup_entropy: bool = True,
     ):
         super().__init__()
