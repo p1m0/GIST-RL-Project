@@ -39,20 +39,17 @@ class MLPPolicy(nn.Module):
         ob_dim: int,
         n_layers: int,
         layer_size: int,
-        fixed_std: Optional[float] = None,
+        activation: str='tanh'
     ):
         super().__init__()
 
-        self.fixed_std = fixed_std
-
-        assert fixed_std is None
         self.net = ptu.build_mlp(
             input_size=ob_dim,
             output_size=2*ac_dim,
             n_layers=n_layers,
             size=layer_size,
+            activation=activation
         ).to(ptu.device)
-
 
     def forward(self, obs: torch.FloatTensor) -> distributions.Distribution:
         """
@@ -61,7 +58,7 @@ class MLPPolicy(nn.Module):
         flexible objects, such as a `torch.distributions.Distribution` object. It's up to you!
         """
         mean, std = torch.chunk(self.net(obs), 2, dim=-1)
-        std = torch.nn.functional.softplus(std) + 1e-2
+        std = torch.nn.functional.softplus(std) + 1e-6
 
         action_distribution = make_tanh_transformed(mean, std)
         return action_distribution

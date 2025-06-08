@@ -40,7 +40,8 @@ def sample_trajectory(
         acs.append(ac)
         rewards.append(rew)
         next_obs.append(next_ob)
-        terminals.append(rollout_done)
+        # terminals.append(done)
+        terminals.append(done and not info.get("TimeLimit.truncated", False))
 
         ob = next_ob
 
@@ -52,7 +53,7 @@ def sample_trajectory(
     if "episode" in info:
         episode_statistics.update(info["episode"])
 
-    env.close()
+    # env.close()
 
     return {
         "observation": np.array(obs, dtype=np.float32),

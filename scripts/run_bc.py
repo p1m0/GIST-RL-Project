@@ -72,6 +72,7 @@ def run_training_loop(params):
                 next_observation=episode.observations[idx], # we don't need next_observation for BC
                 done=False # we don't need done for BC
             )
+    print(f"Collected {len(replay_buffer)} transitions from the dataset.")
 
     #############
     ## ENV
@@ -80,7 +81,7 @@ def run_training_loop(params):
     env = gym.make(params['env_name'], render_mode='rgb_array') #render_mode='rgb_array' or 'human'
     env.reset(seed=seed)
 
-    params['ep_len'] = params['ep_len'] or env.spec.max_episode_steps
+    params['ep_len'] = env.spec.max_episode_steps
 
     # Observation and action sizes
     ob_dim = env.observation_space.shape[0]
@@ -94,7 +95,7 @@ def run_training_loop(params):
         ac_dim,
         ob_dim,
         params['n_layers'],
-        params['size'],
+        params['hidden_size'],
         learning_rate=params['learning_rate'],
     )
 
@@ -105,41 +106,47 @@ def run_training_loop(params):
     # train agent (using sampled data from replay buffer)
     print('\nTraining agent using sampled data from replay buffer...')
     training_logs = []
-    for _ in range(params['num_agent_train_steps_per_iter']):
+    for itr in range(params['num_iter']):
         batch = replay_buffer.sample(params['train_batch_size'])
         ob_batch = batch['observations']
         ac_batch = batch['actions']
         
         train_log = actor.update(ob_batch, ac_batch)
         training_logs.append(train_log)
+        if itr % params['scalar_log_freq'] == 0:
+            eval_env = gym.make(params['env_name'], render_mode="rgb_array")
+            trajectories = utils.sample_n_trajectories(
+                eval_env,
+                policy=actor,
+                ntraj=100,
+                max_length=eval_env.spec.max_episode_steps,
+            )
+            mean_return = np.mean([t["episode_statistics"]["r"] for t in trajectories])
 
-    print('\nBeginning logging procedure...')
-    if log_video:
-        print('\nCollecting video rollouts eval')
-        eval_video_paths = utils.sample_n_trajectories(
-            env, actor, MAX_NVIDEO, params['ep_len'], True)
-
-        logger.log_paths_as_videos(
-            eval_video_paths, 1,
-            fps=15,
-            max_videos_to_save=MAX_NVIDEO,
-            video_title='eval_rollouts')
-
-    print("\nCollecting data for eval...")
-    eval_paths, _ = utils.sample_trajectories(
-        env, actor, params['eval_batch_size'], params['ep_len'])
-
-    logs = utils.compute_metrics(eval_paths, eval_paths)
-
-    # perform the logging
-    for key, value in logs.items():
-        print('{} : {}'.format(key, value))
-        logger.log_scalar(value, key, 0)
-    print('Done logging...\n\n')
+            print('Iter: {} - {} : {}'.format(itr, 'eval_return', mean_return))
+            logger.log_scalar(mean_return, 'eval_return', itr)
 
     if params['save_params']:
         print('\nSaving agent params')
         actor.save('{}/policy.pt'.format(params['logdir']))
+
+    eval_env = gym.make(params['env_name'], render_mode="rgb_array")
+
+    trajectories = utils.sample_n_trajectories(
+        eval_env,
+        policy=actor,
+        ntraj=100,
+        max_length=eval_env.spec.max_episode_steps,
+    )
+
+    returns = [t["episode_statistics"]["r"] for t in trajectories]
+    ep_lens = [t["episode_statistics"]["l"] for t in trajectories]
+
+    print(f"Evaluation over {len(trajectories)} trajectories:")
+    print(f"Mean return: {np.mean(returns):.2f}, Mean episode length: {np.mean(ep_lens):.2f}")
+    print(f"Std return: {np.std(returns):.2f}, Max return: {np.max(returns):.2f}, Min return: {np.min(returns):.2f}")
+    print(f"Replay buffer size: {len(replay_buffer)}")
+
             
 
 def main():
@@ -147,23 +154,15 @@ def main():
     # parser.add_argument('--expert_data', '-ed', type=str, required=True) #relative to where you're running this script from
     parser.add_argument('--env_name', '-env', type=str, help=f'choices: {", ".join(MJ_ENV_NAMES.keys())}', required=True)
     parser.add_argument('--exp_name', '-exp', type=str, default='pick an experiment name', required=True)
-    parser.add_argument('--ep_len', type=int)
 
-    parser.add_argument('--num_agent_train_steps_per_iter', type=int, default=1000)  # number of gradient steps for training policy (per iter in n_iter)
+    parser.add_argument('--num_iter', type=int, default=10000)
+    parser.add_argument('--train_batch_size', type=int, default=256)
 
-    parser.add_argument('--batch_size', type=int, default=1000)  # training data collected (in the env) during each iteration
-    parser.add_argument('--eval_batch_size', type=int,
-                        default=1000)  # eval data collected (in the env) for logging metrics
-    parser.add_argument('--train_batch_size', type=int,
-                        default=100)  # number of sampled data points to be used per gradient/train step
+    parser.add_argument('--n_layers', type=int, default=3)  # depth, of policy to be learned
+    parser.add_argument('--hidden_size', type=int, default=256)  # width of each layer, of policy to be learned
+    parser.add_argument('--learning_rate', '-lr', type=float, default=5e-4)  # LR for supervised learning
 
-    parser.add_argument('--n_layers', type=int, default=2)  # depth, of policy to be learned
-    parser.add_argument('--size', type=int, default=64)  # width of each layer, of policy to be learned
-    parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)  # LR for supervised learning
-
-    parser.add_argument('--video_log_freq', type=int, default=5)
-    parser.add_argument('--scalar_log_freq', type=int, default=1)
-    parser.add_argument('--max_replay_buffer_size', type=int, default=1000000)
+    parser.add_argument('--max_replay_buffer_size', type=int, default=10000000)
     parser.add_argument('--save_params', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     args = parser.parse_args()

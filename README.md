@@ -17,3 +17,69 @@ The run_bc.py script downloads expert data from Minari (https://minari.farama.or
 The run_a2c.py script runs the Advantage Actor Critic (Policy gradient with a few tricks) algorithm on a given MuJoCo environment. There is also Generalized Advantage Estimation (GAE) available for use (another fancy trick which might improve performance a little bit)
 
 The run_sac.py runs the Soft Actor Critic algorithm on a given MuJoCo environment. This is a fancier version of DeepQ that works with continuous action spaces. It uses reparametrization trick, Polyak averaging and some other tricks to improve performance (I'm not gonna act like I understand 100% how and why they work).
+
+Experiment results:
+
+HalfCheetah:
+    Custom A2C:
+    * config:
+        --discount 0.96 -n 1000 -l 2 -s 128 -b 5000 -lr 0.003 --baseline_gradient_steps 10 -na -rtg --use_baseline --gae_lambda 0.97
+    * runtime: 12 minutes
+    * total env steps 5 000 000
+
+    SB A2C:
+    * config: same as above
+    * runtime: 10 minutes
+
+    Custom SAC:
+    * config:
+        --batch_size 256 --n_layers 3 --hidden_size 128 --learning_rate 3e-5 --total_steps 200000 --random_steps 5000 --discount 0.99 --soft_target_update_rate 0.004 --temperature 0.05 --activation relu
+    * runtime:
+
+    SB SAC:
+    * config: same as above
+    * runtime: 
+
+Humanoid:
+    Custom A2C:
+    * config:
+        --discount 0.99 --total_timesteps 5000000 -l 3 -s 256 -b 10000 -lr 0.001 --baseline_gradient_steps 10 -na -rtg --use_baseline --gae_lambda 0.97
+    * runtime: 25 minutes
+    * total env steps 5 000 000
+
+    SB A2C:
+    * config: same as above
+    * runtime: 25 minutes
+
+    Custom SAC:
+    * config:
+        --batch_size 256 --n_layers 3 --hidden_size 128 --learning_rate 3e-5 --total_steps 200000 --random_steps 5000 --discount 0.99 --soft_target_update_rate 0.004 --temperature 0.05 --activation relu
+    * runtime: 6 hours
+
+    SB SAC:
+    * config: same as above
+    * runtime: 3 hours
+
+    Behavioral cloning:
+    * runtime: seconds
+    * Eval return: 
+
+Ant:
+Custom A2C:
+    * config:
+        --discount 0.99 --total_timesteps 5000000 -l 3 -s 256 -b 10000 -lr 0.001 --baseline_gradient_steps 10 -na -rtg --use_baseline --gae_lambda 0.97
+    * runtime: 25 minutes
+    * total env steps 5 000 000
+
+    SB A2C:
+    * config: same as above
+    * runtime: 25 minutes
+
+    Custom SAC:
+    * config:
+    --batch_size 256 --n_layers 3 --hidden_size 128 --learning_rate 3e-5 --total_steps 200000 --random_steps 5000 --discount 0.99 --soft_target_update_rate 0.004 --temperature 0.05 --activation relu
+    * runtime: 6 hours
+
+    SB SAC:
+    * config: same as above
+    * runtime: 3 hours

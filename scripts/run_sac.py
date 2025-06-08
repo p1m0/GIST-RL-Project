@@ -10,20 +10,47 @@ import numpy as np
 import torch
 import tqdm
 
+from gymnasium.wrappers import RescaleAction, ClipAction, RecordEpisodeStatistics, NormalizeObservation
+
 from infrastructure import utils
 from infrastructure.logger import Logger
+from infrastructure import pytorch_util as ptu
 
 
 def run_training_loop(args: argparse.Namespace):
     # set random seeds
+    ptu.init_gpu(not args.no_gpu, args.which_gpu)
+
     logger = Logger(args.logdir)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
     # make the gym environment
-    env = gym.make(args.env_name, render_mode='rgb_array')
-    eval_env = gym.make(args.env_name, render_mode='rgb_array')
-    render_env = gym.make(args.env_name, render_mode='rgb_array')
+    env = RecordEpisodeStatistics(
+            ClipAction(
+                RescaleAction(
+                    NormalizeObservation(
+                        gym.make(args.env_name, render_mode=None),
+                        epsilon=1e-8,
+                    ),
+                    min_action=-1.0, 
+                    max_action=1.0,
+                )
+            )
+        )
+    
+    eval_env = RecordEpisodeStatistics(
+            ClipAction(
+                RescaleAction(
+                    NormalizeObservation(
+                        gym.make(args.env_name, render_mode=None),
+                        epsilon=1e-8,
+                    ),
+                    min_action=-1.0, 
+                    max_action=1.0,
+                )
+            )
+        )
 
     ep_len = env.spec.max_episode_steps
     batch_size = args.batch_size
@@ -31,20 +58,17 @@ def run_training_loop(args: argparse.Namespace):
     ob_shape = env.observation_space.shape
     ac_dim = env.action_space.shape[0]
 
-    # simulation timestep, will be used for video saving
-    if "model" in dir(env):
-        fps = 1 / env.model.opt.timestep
-    else:
-        fps = env.env.metadata["render_fps"]
-
     # initialize agent
     agent = SoftActorCritic(
         ob_shape,
         ac_dim,
+        learning_rate=args.learning_rate,
         n_layers=args.n_layers,
         hidden_size=args.hidden_size,
-        discount=0.99,
-        soft_target_update_rate=0.005,
+        discount=args.discount,
+        temperature=args.temperature,
+        soft_target_update_rate=args.soft_target_update_rate,
+        activation=args.activation,
     )
 
     replay_buffer = ReplayBuffer()
@@ -78,7 +102,7 @@ def run_training_loop(args: argparse.Namespace):
         if step >= args.random_steps:
             batch = replay_buffer.sample(batch_size)
             update_info = agent.update(batch['observations'], batch['actions'], batch['rewards'],
-                                       batch['next_observations'], batch['dones'], step)
+                                       batch['next_observations'], batch['dones'])
 
             # Logging
             update_info["actor_lr"] = agent.actor_lr_scheduler.get_last_lr()[0]
@@ -87,7 +111,6 @@ def run_training_loop(args: argparse.Namespace):
             if step % args.log_interval == 0:
                 for k, v in update_info.items():
                     logger.log_scalar(v, k, step)
-                    logger.log_scalars
                 logger.flush()
 
         # Run evaluation
@@ -112,43 +135,31 @@ def run_training_loop(args: argparse.Namespace):
                 logger.log_scalar(np.max(ep_lens), "eval/ep_len_max", step)
                 logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", step)
 
-            if args.num_render_trajectories > 0:
-                video_trajectories = utils.sample_n_trajectories(
-                    render_env,
-                    agent,
-                    args.num_render_trajectories,
-                    ep_len,
-                    render=True,
-                )
-
-                logger.log_paths_as_videos(
-                    video_trajectories,
-                    step,
-                    fps=fps,
-                    max_videos_to_save=args.num_render_trajectories,
-                    video_title="eval_rollouts",
-                )
-
-
 def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--env_name", type=str, required=True)
     parser.add_argument("--exp_name", type=str, default="test")
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--n_layers", type=int, default=2)
+    parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--n_layers", type=int, default=3)
     parser.add_argument("--hidden_size", type=int, default=256)
+    parser.add_argument("--learning_rate", type=float, default=5e-5)
+    parser.add_argument("--discount", type=float, default=0.99)
+    parser.add_argument("--soft_target_update_rate", type=float, default=0.005)
+    parser.add_argument("--temperature", type=float, default=0.05)
+    parser.add_argument("--activation", type=str, default="tanh")
     parser.add_argument("--total_steps", type=int, default=1000000)
-    parser.add_argument("--random_steps", type=int, default=10000)
+    parser.add_argument("--random_steps", type=int, default=1000)
 
-    parser.add_argument("--eval_interval", "-ei", type=int, default=5000)
+    parser.add_argument("--eval_interval", "-ei", type=int, default=1000)
     parser.add_argument("--num_eval_trajectories", "-neval", type=int, default=10)
     parser.add_argument("--num_render_trajectories", "-nvid", type=int, default=0)
 
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--no_gpu", "-ngpu", action="store_true")
     parser.add_argument("--which_gpu", "-g", default=0)
-    parser.add_argument("--log_interval", type=int, default=1000)
+    parser.add_argument("--log_interval", type=int, default=100)
+    parser.add_argument('--save_params', action='store_true')
 
     args = parser.parse_args()
 
@@ -170,7 +181,6 @@ def main():
         os.makedirs(logdir)
 
     run_training_loop(args)
-
 
 if __name__ == "__main__":
     main()
