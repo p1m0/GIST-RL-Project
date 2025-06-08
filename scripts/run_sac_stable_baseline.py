@@ -115,19 +115,20 @@ def main():
         )
     )
 
-    # model = SAC("MlpPolicy", env,
-    #             verbose=1,
-    #             gamma=args.discount,
-    #             learning_rate=args.learning_rate,
-    #             batch_size=args.batch_size,
-    #             tau=args.soft_target_update_rate,
-    #             ent_coef=args.temperature,
-    #             tensorboard_log=log_dir,
-    #             policy_kwargs=policy_kwargs)
     model = SAC("MlpPolicy", env,
-                verbose=2,
+                verbose=1,
+                gamma=args.discount,
+                learning_rate=args.learning_rate,
+                batch_size=args.batch_size,
+                tau=args.soft_target_update_rate,
+                ent_coef=args.temperature,
                 tensorboard_log=log_dir,
-            )
+                policy_kwargs=policy_kwargs)
+    
+    # model = SAC("MlpPolicy", env,
+    #             verbose=2,
+    #             tensorboard_log=log_dir,
+    #         )
     print(f"Model created in environment {args.env_name}, logging to {log_dir}")
 
     model.learn(total_timesteps=args.total_steps, log_interval=args.log_interval)

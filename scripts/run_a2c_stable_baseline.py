@@ -68,46 +68,31 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_name", type=str, required=True)
     parser.add_argument("--exp_name", type=str, required=True)
-    parser.add_argument("--n_iter", "-n", type=int, default=200)
+    # parser.add_argument("--n_iter", "-n", type=int, default=200)
+    parser.add_argument("--total_timesteps", type=int, default=5000000)
 
+    parser.add_argument("--use_reward_to_go", "-rtg", action="store_true")
     parser.add_argument("--use_baseline", action="store_true")
     parser.add_argument("--baseline_learning_rate", "-blr", type=float, default=5e-3)
     parser.add_argument("--baseline_gradient_steps", "-bgs", type=int, default=5)
-    parser.add_argument("--use_reward_to_go", "-rtg", action="store_true")
     parser.add_argument("--gae_lambda", type=float, default=0.99)
     parser.add_argument("--normalize_advantages", "-na", action="store_true")
-    parser.add_argument(
-        "--batch_size", "-b", type=int, default=1000
-    )  # steps collected per train iteration
-    parser.add_argument(
-        "--eval_batch_size", "-eb", type=int, default=400
-    )  # steps collected per eval iteration
+    parser.add_argument("--batch_size", "-b", type=int, default=1000)
 
-    parser.add_argument("--discount", type=float, default=1.0)
+    parser.add_argument("--discount", type=float, default=0.99)
     parser.add_argument("--learning_rate", "-lr", type=float, default=5e-3)
-    parser.add_argument("--n_layers", "-l", type=int, default=3)
+    parser.add_argument("--n_layers", "-l", type=int, default=2)
     parser.add_argument("--layer_size", "-s", type=int, default=256)
 
-    parser.add_argument(
-        "--ep_len", type=int
-    )  # students shouldn't change this away from env's default
+    parser.add_argument("--ep_len", type=int)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--no_gpu", "-ngpu", action="store_true")
     parser.add_argument("--which_gpu", "-gpu_id", default=0)
-    parser.add_argument("--video_log_freq", type=int, default=-1)
     parser.add_argument("--scalar_log_freq", type=int, default=10)
-    parser.add_argument('--save_params', action='store_true')
 
     args = parser.parse_args()
 
     log_dir = f"data/SB_{args.exp_name}_{args.env_name}_{time.strftime('%d-%m-%Y_%H-%M-%S')}/"
-
-    """
-    --discount 0.96 -n 1000 -l 2 -s 128 -b 5000 -lr 0.003 \
-    --baseline_gradient_steps 10 \
-    -na -rtg --use_baseline --gae_lambda 0.97 \
-    --exp_name HalfCheetah
-    """
 
     vec_env = make_vec_env(args.env_name, n_envs=1)
     policy_kwargs = {

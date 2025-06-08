@@ -25,16 +25,10 @@ def run_training_loop(args):
     # make the gym environment
     env = gym.make(args.env_name, render_mode='rgb_array')
 
-    max_ep_len = args.ep_len or env.spec.max_episode_steps
+    max_ep_len = env.spec.max_episode_steps
 
     ob_dim = env.observation_space.shape[0]
     ac_dim = env.action_space.shape[0]
-
-    # simulation timestep, will be used for video saving
-    if hasattr(env, "model"):
-        fps = 1 / env.model.opt.timestep
-    else:
-        fps = env.env.metadata["render_fps"]
 
     # initialize agent
     agent = PGAgent(
@@ -92,15 +86,6 @@ def run_training_loop(args):
             logger.log_scalar(np.mean(returns), "eval_return", total_envsteps)
             logger.log_scalar(np.mean(ep_lens), "eval_ep_len", total_envsteps)
 
-            if len(returns) > 1:
-                logger.log_scalar(np.std(returns), "eval/return_std", total_envsteps)
-                logger.log_scalar(np.max(returns), "eval/return_max", total_envsteps)
-                logger.log_scalar(np.min(returns), "eval/return_min", total_envsteps)
-                logger.log_scalar(np.std(ep_lens), "eval/ep_len_std", total_envsteps)
-                logger.log_scalar(np.max(ep_lens), "eval/ep_len_max", total_envsteps)
-                logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", total_envsteps)
-            # save eval metrics
-
 
 def main():
     import argparse
@@ -117,25 +102,17 @@ def main():
     parser.add_argument("--baseline_gradient_steps", "-bgs", type=int, default=5)
     parser.add_argument("--gae_lambda", type=float, default=0.99)
     parser.add_argument("--normalize_advantages", "-na", action="store_true")
-    parser.add_argument(
-        "--batch_size", "-b", type=int, default=1000
-    )  # steps collected per train iteration
-    parser.add_argument(
-        "--eval_batch_size", "-eb", type=int, default=400
-    )  # steps collected per eval iteration
+    parser.add_argument("--batch_size", "-b", type=int, default=1000)
 
     parser.add_argument("--discount", type=float, default=0.99)
     parser.add_argument("--learning_rate", "-lr", type=float, default=5e-3)
     parser.add_argument("--n_layers", "-l", type=int, default=2)
     parser.add_argument("--layer_size", "-s", type=int, default=256)
 
-    parser.add_argument(
-        "--ep_len", type=int
-    )  # students shouldn't change this away from env's default
+    parser.add_argument("--ep_len", type=int)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--no_gpu", "-ngpu", action="store_true")
     parser.add_argument("--which_gpu", "-gpu_id", default=0)
-    parser.add_argument("--video_log_freq", type=int, default=-1)
     parser.add_argument("--scalar_log_freq", type=int, default=10)
 
     args = parser.parse_args()
