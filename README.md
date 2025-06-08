@@ -61,8 +61,11 @@ Humanoid:
     * runtime: 3 hours
 
     Behavioral cloning:
-    * runtime: seconds
-    * Eval return: 
+    * config:
+        --num_iter 10000 --train_batch_size 256 --n_layers 3 --hidden_size 256 --
+    * runtime: 3 minutes
+    * eval return: 470
+    * expert data size: 999,434
 
 Ant:
 Custom A2C:
