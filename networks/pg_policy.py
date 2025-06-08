@@ -13,12 +13,6 @@ from networks.base_policy import BasePolicy
 
 
 class MLPPolicyPG(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
-    """Base MLP policy, which can take an observation and output a distribution over actions.
-
-    This class should implement the `forward` and `get_action` methods. The `update` method should be written in the
-    subclasses, since the policy update rule differs for different algorithms.
-    """
-
     def __init__(
         self,
         ac_dim: int,
@@ -65,11 +59,6 @@ class MLPPolicyPG(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         return action
 
     def forward(self, obs: torch.FloatTensor):
-        """
-        This function defines the forward pass of the network.  You can return anything you want, but you should be
-        able to differentiate through it. For example, you can return a torch.FloatTensor. You can also return more
-        flexible objects, such as a `torch.distributions.Distribution` object. It's up to you!
-        """
         if self.discrete:
             logits = self.logits_net(obs)
             res = distributions.Categorical(logits=logits)

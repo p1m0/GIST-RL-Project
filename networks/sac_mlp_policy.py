@@ -52,11 +52,6 @@ class MLPPolicy(nn.Module):
         ).to(ptu.device)
 
     def forward(self, obs: torch.FloatTensor) -> distributions.Distribution:
-        """
-        This function defines the forward pass of the network.  You can return anything you want, but you should be
-        able to differentiate through it. For example, you can return a torch.FloatTensor. You can also return more
-        flexible objects, such as a `torch.distributions.Distribution` object. It's up to you!
-        """
         mean, std = torch.chunk(self.net(obs), 2, dim=-1)
         std = torch.nn.functional.softplus(std) + 1e-6
 
