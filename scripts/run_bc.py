@@ -64,6 +64,8 @@ def run_training_loop(params):
     dataset = minari.load_dataset('mujoco/' + MJ_ENV_NAMES[params['env_name']], download=True)
     for episode in dataset.iterate_episodes():
         # Add each episode to the replay buffer
+        if len(replay_buffer) >= params['max_replay_buffer_size']:
+            break
         for idx in range(len(episode)):
             replay_buffer.insert(
                 observation=episode.observations[idx],
@@ -72,13 +74,15 @@ def run_training_loop(params):
                 next_observation=episode.observations[idx], # we don't need next_observation for BC
                 done=False # we don't need done for BC
             )
+            if len(replay_buffer) >= params['max_replay_buffer_size']:
+                break
     print(f"Collected {len(replay_buffer)} transitions from the dataset.")
 
     #############
     ## ENV
     #############
 
-    env = gym.make(params['env_name'], render_mode='rgb_array') #render_mode='rgb_array' or 'human'
+    env = gym.make(params['env_name'], render_mode='rgb_array')
     env.reset(seed=seed)
 
     params['ep_len'] = env.spec.max_episode_steps
@@ -162,7 +166,8 @@ def main():
     parser.add_argument('--hidden_size', type=int, default=256)  # width of each layer, of policy to be learned
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-4)  # LR for supervised learning
 
-    parser.add_argument('--max_replay_buffer_size', type=int, default=10000000)
+    parser.add_argument('--scalar_log_freq', type=int, default=100)  # how often to log scalar values
+    parser.add_argument('--max_replay_buffer_size', type=int, default=1000000)
     parser.add_argument('--save_params', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     args = parser.parse_args()
