@@ -20,7 +20,12 @@ The run_bc.py script downloads expert data from Minari (https://minari.farama.or
 
 The run_a2c.py script runs the Advantage Actor Critic (Policy gradient with a few tricks) algorithm on a given MuJoCo environment. There is also Generalized Advantage Estimation (GAE) available for use (another fancy trick which might improve performance a little bit)
 
-The run_sac.py runs the Soft Actor Critic algorithm on a given MuJoCo environment. This is a fancier version of DeepQ that works with continuous action spaces. It uses reparametrization trick, Polyak averaging and some other tricks to improve performance (I'm not gonna act like I understand 100% how and why they work).
+The run_sac.py runs the Soft Actor Critic algorithm on a given MuJoCo environment. This is a fancier version of DeepQ that works with continuous action spaces. It uses the reparametrization trick, entropy, Polyak averaging and some other tricks to improve performance (I'm not gonna act like I understand 100% how and why they work).
+
+*FINDINGS* <br>
+As expected, the A2C is much less sample efficient than SAC. This is because A2C is an on-policy method meaning for every training steps it needs to get new transitions from the environment. SAC on the other hand is much more computationally expensive but usually reaches better performance than A2C ever could. There are some differences between our implementation and SB3's implementation, the main being stability - our training curves are much more spikey and sometimes the evaluation performance crashes while the SB3 runs go very smoothly. The most obvious reason is probably a difference in implementation. Another difference might be different replay buffer (if they use a prioritized replay buffer that might help increase performance and smoothen out the training process).
+
+Behavioral cloning seems like it can work SOMETIMES. For example with the Ant environment it reached much better performance than SAC or A2C with "only" 1M expert transitions in quite a short time. On the Humanoid and especially HalfCheetah especially we can see that the performance wasn't good. The reason might be that these environemnts are much more prone to failure (the robot is much more unstable) which means that a slight mistake in BC can end an episode.
 
 Experiment configs and results:
 
@@ -39,18 +44,20 @@ HalfCheetah:
     Custom SAC:
     * config:
         --batch_size 256 --n_layers 3 --hidden_size 128 --learning_rate 3e-5 --total_steps 200000 --random_steps 5000 --discount 0.99 --soft_target_update_rate 0.004 --temperature 0.05 --activation relu
-    * runtime:
+        
+        --batch_size 256 --n_layers 2 --hidden_size 256 --learning_rate 4e-3 --alpha_learning_rate 2e-3 --total_steps 1000000 --random_steps 10000 --discount 0.98 --soft_target_update_rate 0.005 --temperature 0.05 --activation relu
+    * runtime: 3 hours
 
     SB SAC:
     * config: same as above
-    * runtime: 
+    * runtime: 23 minutes (but only for 200k steps instead of 1M)
 
     Behavioral cloning:
     * config:
         --num_iter 10000 --train_batch_size 256 --n_layers 3 --hidden_size 256 --learning_rate 5e-4
     * runtime: 3 minutes
     * eval return: 470
-    * expert data size: 1,000,000
+    * expert data size: 1 000 000
 
 Humanoid:
 
@@ -78,7 +85,7 @@ Humanoid:
         --num_iter 10000 --train_batch_size 256 --n_layers 3 --hidden_size 256 --learning_rate 5e-4
     * runtime: 3 minutes
     * eval return: 470
-    * expert data size: 999,434
+    * expert data size: 999 434
 
 Ant:
 
@@ -106,4 +113,4 @@ Ant:
         --num_iter 10000 --train_batch_size 256 --n_layers 3 --hidden_size 256 --learning_rate 5e-4
     * runtime: 3 minutes
     * eval return: 470
-    * expert data size: 2,000,000
+    * expert data size: 2 000 000
