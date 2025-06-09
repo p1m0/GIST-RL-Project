@@ -1,3 +1,4 @@
+from calendar import c
 import os
 import time
 import argparse
@@ -63,6 +64,8 @@ def run_training_loop(args: argparse.Namespace):
         ob_shape,
         ac_dim,
         learning_rate=args.learning_rate,
+        critic_learning_rate=args.critic_learning_rate,
+        alpha_learning_rate=args.alpha_learning_rate,
         n_layers=args.n_layers,
         hidden_size=args.hidden_size,
         discount=args.discount,
@@ -144,6 +147,8 @@ def main():
     parser.add_argument("--n_layers", type=int, default=3)
     parser.add_argument("--hidden_size", type=int, default=256)
     parser.add_argument("--learning_rate", type=float, default=5e-5)
+    parser.add_argument("--critic_learning_rate", type=float, default=5e-5)
+    parser.add_argument("--alpha_learning_rate", type=float, default=2e-5)
     parser.add_argument("--discount", type=float, default=0.99)
     parser.add_argument("--soft_target_update_rate", type=float, default=0.005)
     parser.add_argument("--temperature", type=float, default=0.05)

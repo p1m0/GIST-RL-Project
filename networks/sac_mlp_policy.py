@@ -52,8 +52,10 @@ class MLPPolicy(nn.Module):
         ).to(ptu.device)
 
     def forward(self, obs: torch.FloatTensor) -> distributions.Distribution:
-        mean, std = torch.chunk(self.net(obs), 2, dim=-1)
-        std = torch.nn.functional.softplus(std) + 1e-6
+        mean, log_std = torch.chunk(self.net(obs), 2, dim=-1)
+        # std = torch.nn.functional.softplus(std) + 1e-6
+        log_std = torch.clamp(log_std, -20, 2)
+        std = log_std.exp()
 
         action_distribution = make_tanh_transformed(mean, std)
         return action_distribution
