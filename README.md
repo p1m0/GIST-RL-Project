@@ -94,11 +94,12 @@ Ant:
 
     Custom SAC:
     * config:
-    --batch_size 256 --n_layers 3 --hidden_size 256 --learning_rate 3e-5 --total_steps 200000 --random_steps 5000 --discount 0.99 --soft_target_update_rate 0.004 --temperature 0.05 --activation relu
-    * runtime: 6 hours
+    --batch_size 256 --n_layers 2 --hidden_size 256 --learning_rate 4e-3 --total_steps 1000000 --random_steps 10000 --discount 0.98 --soft_target_update_rate 0.005 --temperature 0.05 --activation relu
+
+    * runtime: 5 hours 30 minutes
     SB SAC:
     * config: same as above
-    * runtime: 3 hours
+    * runtime: 4 hours 30 minutes
 
     Behavioral cloning:
     * config:
