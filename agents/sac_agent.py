@@ -22,6 +22,8 @@ class SoftActorCritic(nn.Module):
         hidden_size: int = 256,
         soft_target_update_rate: Optional[float] = 0.005,
         learning_rate: float = 3e-4,
+        critic_learning_rate: Optional[float] = None,
+        alpha_learning_rate: float = 1e-4,
         # Actor-critic configuration
         num_actor_samples: int = 1,
         num_critic_updates: int = 1,
@@ -41,7 +43,8 @@ class SoftActorCritic(nn.Module):
             activation=activation,
         )
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=learning_rate)
-        self.actor_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.actor_optimizer, gamma=0.999999)
+        # self.actor_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.actor_optimizer, gamma=0.999999)
+        self.actor_lr_scheduler = torch.optim.lr_scheduler.ConstantLR(self.actor_optimizer)
 
         self.critics = nn.ModuleList(
             [
@@ -56,8 +59,11 @@ class SoftActorCritic(nn.Module):
             ]
         )
 
-        self.critic_optimizer = torch.optim.Adam(self.critics.parameters(), lr=learning_rate)
-        self.critic_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.critic_optimizer, gamma=0.999999)
+        self.critic_optimizer = torch.optim.Adam(self.critics.parameters(),
+                                                 lr=learning_rate if critic_learning_rate is None
+                                                    else critic_learning_rate)
+        # self.critic_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.critic_optimizer, gamma=0.999999)
+        self.critic_lr_scheduler = torch.optim.lr_scheduler.ConstantLR(self.critic_optimizer)
         self.target_critics = nn.ModuleList(
             [
                 StateActionCritic(
@@ -82,9 +88,15 @@ class SoftActorCritic(nn.Module):
         self.soft_target_update_rate = soft_target_update_rate
 
         self.critic_loss = nn.MSELoss()
-        
-        self.update_target_critic()
 
+        self.log_alpha = torch.zeros(1, requires_grad=True, device=ptu.device)
+        self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=alpha_learning_rate) 
+        self.target_entropy = -action_dim * 0.05
+        
+    @property
+    def alpha(self) -> torch.Tensor:
+        return self.log_alpha.exp()
+    
     def get_action(self, observation: np.ndarray) -> np.ndarray:
         """
         Compute the action for a given observation.
@@ -134,7 +146,8 @@ class SoftActorCritic(nn.Module):
             # next_qs_min += self.temperature * next_action_entropy
             
             log_p = next_action_distribution.log_prob(next_action)
-            next_qs_min -= self.temperature * log_p
+            # next_qs_min -= self.temperature * log_p
+            next_qs_min -= self.alpha.detach() * log_p
 
             target_values: torch.Tensor = reward + (1 - done.float()) * self.discount * next_qs_min
             target_values = target_values.unsqueeze(0).expand(self.num_critic_networks, -1)
@@ -147,7 +160,7 @@ class SoftActorCritic(nn.Module):
 
         self.critic_optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critics.parameters(), max_norm=0.5)
+        # torch.nn.utils.clip_grad_norm_(self.critics.parameters(), max_norm=0.5)
         self.critic_optimizer.step()
 
         return {
@@ -182,15 +195,25 @@ class SoftActorCritic(nn.Module):
         # loss = -torch.mean(q_values_min - self.temperature * entropy)
         
         log_p = action_distribution.log_prob(action)
-        loss = -torch.mean(q_values_min - self.temperature * log_p)
+        # loss = -torch.mean(q_values_min - self.temperature * log_p)
+        loss = (self.alpha.detach() * log_p - q_values_min).mean()
 
         self.actor_optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=0.5)
+        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=0.5)
         self.actor_optimizer.step()
 
+        alpha_loss = -(self.log_alpha * (log_p + self.target_entropy).detach()).mean()
+
+        self.alpha_optimizer.zero_grad()
+        alpha_loss.backward()
+        self.alpha_optimizer.step()
+
         # return {"actor_loss": loss.item(), "entropy": entropy.mean().item()}
-        return {"actor_loss": loss.item(), "entropy": -log_p.mean().item()}
+        return {"actor_loss": loss.item(),
+                "entropy": -log_p.mean().item(),
+                "alpha": self.alpha.item(),
+                "alpha_loss": alpha_loss.item(),}
 
     def update_target_critic(self):
         self.soft_update_target_critic(1.0)
